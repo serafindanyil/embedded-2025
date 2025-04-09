@@ -15,15 +15,25 @@ const char* password = "nulp1816";
 ESP8266WebServer server(80);
 WebSocketsServer webSocket(81);
 
+int clientCount = 0;
+
+uint8_t sequence[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED2_PIN, LED1_PIN};
+
 uint8_t lastButtonState = HIGH;
 uint32_t lastDebounceTime = 0;
-const uint32_t debounceDelay = 120;
 bool ledRunning = false;
 uint8_t lastActiveLed = LED1_PIN;
+uint32_t lastToggleTime = 0;
+bool ledOn = false;
+uint8_t ledIndex = 0;
+
+
+const uint32_t debounceDelay = 120;
+const uint32_t ledInterval = 1000;   
+const uint32_t ledPulse = 200;  
 
 String serialBuffer = "";
 
-int clientCount = 0;
 
 void handleWebSocketMessage(uint8_t *payload, size_t length) {
   StaticJsonDocument<200> doc;
@@ -87,7 +97,6 @@ void setup() {
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
     Serial.println("Connecting...");
   }
   Serial.println("Connected! IP: " + WiFi.localIP().toString());
@@ -132,22 +141,26 @@ int getLedCount(uint8_t pin) {
 
 
 void handleLeds() {
-  static uint32_t lastToggle = 0;
-  static uint8_t sequence[] = {LED1_PIN, LED2_PIN, LED3_PIN, LED2_PIN, LED1_PIN};
-  static uint8_t index = 0;
-
   String board = (clientCount == 0) ? "uart" : "current";
+  uint32_t now = millis();
 
-  if (millis() - lastToggle >= 1000) {
-    lastToggle = millis();
-    digitalWrite(sequence[index], HIGH);
-    delay(200);
-    digitalWrite(sequence[index], LOW);
-    lastActiveLed = sequence[index];
+  if (!ledOn && now - lastToggleTime >= ledInterval) {
+    digitalWrite(sequence[ledIndex], HIGH);
+    ledOn = true;
+    lastToggleTime = now;
+  }
+
+  if (ledOn && now - lastToggleTime >= ledPulse) {
+    digitalWrite(sequence[ledIndex], LOW);
+    lastActiveLed = sequence[ledIndex];
     receiveActiveLed(board, getLedCount(lastActiveLed));
-    index = (index + 1) % 5;
+
+    ledIndex = (ledIndex + 1) % 5;
+    ledOn = false;
+    lastToggleTime = now; 
   }
 }
+
 
 
 void handleButton() {
