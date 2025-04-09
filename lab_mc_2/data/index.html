@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>LED Controller</title>
+		<style>
+			body {
+				font-family: Arial, Helvetica, sans-serif;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				height: 100vh;
+				background-image: linear-gradient(
+					to right top,
+					#d16ba5,
+					#c777b9,
+					#ba83ca,
+					#aa8fd8,
+					#9a9ae1,
+					#8aa7ec,
+					#79b3f4,
+					#69bff8,
+					#52cffe,
+					#41dfff,
+					#46eefa,
+					#5ffbf1
+				);
+			}
+			.card {
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				text-align: center;
+				padding: 2rem 1.5rem;
+				background-color: rgba(255, 255, 255, 0.932);
+				border-radius: 10px;
+				box-shadow: 3px 3px 90px rgba(0, 0, 0, 0.1);
+			}
+			h1 {
+				font-size: 2rem;
+				color: #373134;
+			}
+			p {
+				font-size: 1rem;
+				color: #655d61;
+			}
+			button {
+				all: unset;
+				font-size: 1.5rem;
+				font-weight: 500;
+				color: white;
+				padding: 1rem 6rem;
+				background-color: #aa8fd8;
+				border-radius: 15rem;
+				cursor: pointer;
+				transition: 0.3s;
+				user-select: none; /* Запобігає виділенню тексту */
+				-webkit-user-select: none; /* Для Safari */
+				-moz-user-select: none; /* Для Firefox */
+				-ms-user-select: none; /* Для Internet Explorer/Edge */
+			}
+			button:hover,
+			button:active {
+				background-color: #6d5792;
+			}
+
+			.flex {
+				display: flex;
+			}
+
+			.gap-1 {
+				gap: 1rem;
+			}
+
+			.gap-4 {
+				gap: 4rem;
+			}
+
+			.disabled {
+				filter: brightness(30%);
+			}
+			.red {
+				background-color: rgb(231, 37, 37);
+			}
+
+			.green {
+				background-color: rgb(34, 196, 34);
+			}
+
+			.yellow {
+				background-color: rgb(230, 230, 39);
+			}
+
+			.blue {
+				background-color: rgb(60, 60, 218);
+			}
+
+			.circle {
+				height: 3rem;
+				width: 3rem;
+				border-radius: 100%;
+			}
+
+			.mb-1 {
+				margin-bottom: 0.5rem;
+			}
+			.mb-2 {
+				margin-bottom: 1rem;
+			}
+			.mb-4 {
+				margin-bottom: 2rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="flex gap-4">
+			<div class="card" id="current">
+				<div class="mb-2">
+					<h1 class="mb-1">Current LEDs</h1>
+					<p>Hold button to start current LEDs algo</p>
+				</div>
+				<div class="flex gap-1 mb-4">
+					<div class="circle green disabled" id="c_l1"></div>
+					<div class="circle yellow disabled" id="c_l2"></div>
+					<div class="circle red disabled" id="c_l3"></div>
+				</div>
+				<button
+					onmousedown=" handleHoldButton('current', true);"
+					onmouseup="handleHoldButton('current', false);">
+					Current button!
+				</button>
+			</div>
+			<div class="card" id="uart">
+				<div class="mb-2">
+					<h1 class="mb-1">UART LEDs</h1>
+					<p>Hold button to start UART LEDs algo</p>
+				</div>
+				<div class="flex gap-1 mb-4">
+					<div class="circle red disabled" id="u_l1"></div>
+					<div class="circle yellow disabled" id="u_l2"></div>
+					<div class="circle blue disabled" id="u_l3"></div>
+				</div>
+				<button
+					onmousedown="handleHoldButton('uart', true);"
+					onmouseup="handleHoldButton('uart', false);">
+					UART button!
+				</button>
+			</div>
+		</div>
+		<script>
+			const socket = new WebSocket("ws://" + window.location.hostname + ":81");
+			const validateState = (state) => (state ? 1 : 0);
+
+			function handleHoldButton(board, state) {
+				const message = {
+					board,
+					state,
+				};
+				socket.send(JSON.stringify(message));
+			}
+
+			function handleActiveLed(card, led) {
+				const leds = [
+					document.getElementById(`${card}_l1`),
+					document.getElementById(`${card}_l2`),
+					document.getElementById(`${card}_l3`),
+				];
+				leds.forEach((el) => el.classList.add("disabled"));
+
+				if (led >= 1 && led <= 3) {
+					leds[led - 1].classList.remove("disabled");
+				}
+			}
+
+			socket.onmessage = function (event) {
+				try {
+					const { board, activeLed } = JSON.parse(event.data);
+					handleActiveLed(board.charAt(0), activeLed);
+				} catch (error) {
+					console.error("Error parsing message:", error);
+				}
+			};
+		</script>
+	</body>
+</html>
